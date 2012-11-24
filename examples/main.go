@@ -1,7 +1,7 @@
 package main
 
 import (
-  "github.com/bigs/goober"
+  "../../goober"
   "net/http"
   "io"
   "log"

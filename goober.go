@@ -65,7 +65,6 @@ func isSlash(s rune) (bool) {
 
 // Adds a handler to our route tree
 func (g *Goober) AddHandler(method string, route string, handler Handler) (err int) {
-  err = 0
   route = strings.TrimFunc(route, isSlash)
   var parts = strings.Split(route, "/")
 
@@ -101,7 +100,7 @@ func (g *Goober) AddHandler(method string, route string, handler Handler) (err i
 
   // add handler
   cur.handler = handler
-  return
+  return 0
 }
 
 // Wrapper functions for common types of request
@@ -188,6 +187,9 @@ func (g *Goober) ServeHTTP(w http.ResponseWriter, r *http.Request) {
   if err == 0 && f != nil {
     // user response. pad with content-type.
     w.Header().Set("Content-Type", "text/html; charset=utf-8")
+    w.Header().Set("Server", "goober.go")
+    tm := time.Now().UTC()
+    w.Header().Set("Date", webTime(tm))
     f(w, request)
   } else {
     g.errorHandler(w, request, 404)
@@ -199,5 +201,14 @@ func (g *Goober) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (g *Goober) ListenAndServe(addr string) (err error)  {
   http.Handle("/", g)
   return http.ListenAndServe(addr, nil)
+}
+
+// convert time to webtime, from web.go
+func webTime(t time.Time) string {
+  ftime := t.Format(time.RFC1123)
+  if strings.HasSuffix(ftime, "UTC") {
+    ftime = ftime[0:len(ftime)-3] + "GMT"
+  }
+  return ftime
 }
 
