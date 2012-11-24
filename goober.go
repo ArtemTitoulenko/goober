@@ -23,12 +23,9 @@ type RouteMap map[string]*routeTreeNode
 
 // Our parse tree structure for routes
 type routeTreeNode struct {
-  // Handler if a node is a terminal
-  handler Handler
-  // Statis children
-  children RouteMap
-  // Dynamic/variable children
-  variables RouteMap
+  handler Handler    // Handler if a node is a terminal
+  children RouteMap  // Static children
+  variables RouteMap // dynamic/variable children
 }
 
 // Augment http.Request with URLParams that will be grabbed
@@ -40,30 +37,25 @@ type Request struct {
 
 // A quick initializer for routeTreeNodes
 func newRouteTreeNode() (node *routeTreeNode) {
-  node = &routeTreeNode{
+  return &routeTreeNode{
     children: make(RouteMap),
     variables: make(RouteMap),
   }
-
-  return
 }
 
 // Initialize our Goober object
 func New() (* Goober) {
   var head = make(RouteMap)
-  head = head
   head["GET"] = newRouteTreeNode()
   head["HEAD"] = newRouteTreeNode()
   head["POST"] = newRouteTreeNode()
   head["PUT"] = newRouteTreeNode()
   head["DELETE"] = newRouteTreeNode()
 
-  g := &Goober{
+  return &Goober{
     head: head,
     ErrorPages: make(map[int]string),
   }
-
-  return g
 }
 
 // Simple helper to allow us to trim leading and trailing /'s
@@ -72,7 +64,7 @@ func isSlash(s rune) (bool) {
 }
 
 // Adds a handler to our route tree
-func (g *Goober) AddHandler(method string, route string, handler Handler) (err int){
+func (g *Goober) AddHandler(method string, route string, handler Handler) (err int) {
   err = 0
   route = strings.TrimFunc(route, isSlash)
   var parts = strings.Split(route, "/")
@@ -132,19 +124,16 @@ func (g *Goober) Delete(route string, handler Handler) (int) {
 }
 
 func walkTree(node *routeTreeNode, parts []string, r *Request) (handler Handler, err int) {
-  err = 0
-  handler = nil
-
   if len(parts) == 0 {
     // if we've reached a terminal state, return handler
-    handler = node.handler
+    return node.handler, 0
   } else {
     // else, look for it
     var part = parts[0]
 
     if child, ok := node.children["*"]; ok {
-      handler = child.handler
       r.URLParams["*"] = strings.Join(parts, "/")
+      return child.handler, 0
     } else if node.children[part] != nil {
       // check static routes first, they have priority
       return walkTree(node.children[part], parts[1:], r)
@@ -155,15 +144,14 @@ func walkTree(node *routeTreeNode, parts []string, r *Request) (handler Handler,
         if err == 0 {
           // goofy recursive way to build up params
           r.URLParams[k] = part
-          return
+          return handler, 0
         }
       }
 
       // if we don't find any dynamic matches, there was an error
-      err = -1
+      return nil, -1
     }
   }
-
   return
 }
 
